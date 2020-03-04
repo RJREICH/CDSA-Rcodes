@@ -1,0 +1,205 @@
+
+model{
+
+
+# N:nb of observations
+# y[N]:outcome response of linear model 
+# nb_levels:total number of levels for all categorical predictors
+# X[nb_levels+1,nb_levels+1]:design matrix (including the intercept)
+# B[nb_levels+1,nb_levels+1]:regression coefficients
+# tau:linear model precision
+# p_g: prior inclusion probability for covariates
+# m[nb_levels]:vector of nb of levels (without baseline) of each parameter
+# pos[nb_levels]:vector of position of each parameter 
+# inv_psi[1:6]:vector of scale parameters for the mulivariate Normal  
+               distribution on the location parameter mu_g for each 
+               categorical covariate
+# lambdag: g = 1,..,6 vector of non_negative probability weights for predictor            g 
+# level[1:6] : vector of number of levels for each predictor
+# mul[level[g]]:location parameters for the levels of predictor g 
+# eg: g = 1,..,6 hyperparameter vectors fixed by the user 
+  
+  
+#----------------------------------------------------------------------------
+# Likelihood of the linear model (Normal distribution)
+# First parameter refers to mean and the second to precision (inverse of variance)
+#-----------------------------------------------------------------------------
+ 
+  for (i in 1:N){
+    y[i] ~ dnorm(X[i,]%*%B,tau)
+  }
+  
+#---------------------------------
+# Flat Normal prior for intercept
+#---------------------------------
+  
+  B[1] ~ dnorm(0,0.001) 
+  
+#----------------------------------------------------------------
+# Flat Gamma prior for the precison parameter of the linear model
+#----------------------------------------------------------------
+  
+tau ~ dgamma(0.001,0.001)
+  
+  
+#---------------------------------------------------------------
+# Dirichlet Distribution on the cluster weights for each of the 
+# 6 categorical predictors
+#---------------------------------------------------------------
+ 
+  
+  lambda1 ~ ddirch(e_1)
+  lambda2 ~ ddirch(e_2)
+  lambda3 ~ ddirch(e_3)
+  lambda4 ~ ddirch(e_4)
+  lambda5 ~ ddirch(e_5)
+  lambda6 ~ ddirch(e_6)
+  
+
+#-------------------------------------------------------------------------
+# Categorical prior with probability parameter lambdai, i = 1,..6 for clusters # allocation
+#-------------------------------------------------------------------------
+  
+  for(i in 1:8){
+    z1[i] ~ dcat(lambda1)
+    z5[i] ~ dcat(lambda5)
+  }
+  
+  
+  for (i in 1:10){
+    z4[i] ~ dcat(lambda4)
+  }
+  
+
+  for (i in 1:5){
+    z6[i] ~ dcat(lambda6)
+  }
+  
+  
+  for (i in 1:4){
+    z3[i] ~ dcat(lambda3)
+  }
+  
+  
+  for (i in 1:7){
+   z2[i] ~ dcat(lambda2)
+  }
+  
+#--------------------------------------------  
+# Gamma prior on the scale parameter 1/psi_g
+# nu is a hyperparameter to set by the use
+#--------------------------------------------
+  
+   for (i in 1:6){
+     inv_psi[i] ~ dgamma(100,(V[i]/nu)*(100-1))}
+  
+#-------------------------------------------------------------
+# Multivariate Normal distributions on the location parameters 
+# for each categorical covariate
+#-------------------------------------------------------------
+
+# ----- For predictor X1 -----  
+for (j in 1:level[1]){
+    
+    BB1[j] ~ dnorm(mu1[z1[j]],inv_psi[1])
+    B1[j] <- ifelse(z1[j] == 1,0,BB1[j])
+  }
+  
+# ----- For predictor X3 -----  
+for (j in 1:level[2]){
+    
+    BB2[j] ~ dnorm(mu2[z2[j]],inv_psi[2])
+    B2[j] <- ifelse(z2[j] == 1,0,BB2[j])
+  }
+
+# ----- For predictor X3 -----  
+for (j in 1:level[3]){
+    
+    BB3[j] ~ dnorm(mu3[z3[j]],inv_psi[3])
+    B3[j] <- ifelse(z3[j] == 1,0,BB3[j])
+  }
+
+# ----- For predictor X4 -----  
+for (j in 1:level[4]){
+    
+    BB4[j] ~ dnorm(mu4[z4[j]],inv_psi[4])
+    B4[j] <- ifelse(z4[j] == 1,0,BB4[j])
+  }
+# ----- For predictor X5 -----  
+for (j in 1:level[5]){
+    
+    BB5[j] ~ dnorm(mu5[z5[j]],inv_psi[5])
+    B5[j] <- ifelse(z5[j] == 1,0,BB5[j])
+  }
+  
+# ----- For predictor X6 -----  
+for (j in 1:level[6]){
+    
+    BB6[j] ~ dnorm(z6[j],inv_psi[6])
+    B6[j] <- ifelse(z6[j] == 1,0,BB6[j])
+  }
+  
+ # The overall regression coefficients vector 
+  
+  B[2:8] <- B1
+  B[9:14]  <- B2
+  B[15:17] <- B3
+  B[18:26] <- B4
+  B[27:33] <- B5
+  B[34:37] <- B6
+  
+  
+#-------------------------------------------------------------  
+# Multivariate Normal distributions on the location parameters
+# for each categorical covariate
+#--------------------------------------------------------------
+     
+  # -----location parameter for X1 -----
+  
+  # for the baseline level
+  mu1[1] <- 0 
+  
+  # for the other levels
+  mu1[2:(level[1]+1)] ~ dmnorm(mean_B1,inv_M0_1*I_1)
+  
+  # -----location parameter for X2 -----
+  
+  # for the baseline level
+  mu2[1] <- 0 
+  
+  # for the other levels
+  mu2[2:(level[2]+1)] ~ dmnorm(mean_B2,inv_M0_2*I_2)
+  
+  # -----location parameter for X2 -----
+  
+  # for the baseline level
+  mu3[1] <- 0 
+  
+  # for the other levels
+  mu3[2:(level[3]+1)] ~ dmnorm(mean_B3,inv_M0_3*I_3)
+  
+  # -----location parameter for X4 -----
+  
+  # for the baseline level
+  mu4[1] <- 0 
+  
+  # for the other levels
+  mu4[2:(level[4]+1)] ~ dmnorm(mean_B4,inv_M0_4*I_4)
+  
+  # -----location parameter for X5 -----
+  
+  # for the baseline level
+  mu5[1] <- 0 
+  
+  # for the other levels  
+  mu5[2:(level[5]+1)] ~ dmnorm(mean_B5,inv_M0_5*I_5)
+  
+  # -----location parameter for X6 -----
+  
+  # for the baseline level
+  mu6[1] <- 0 
+  
+  # for the other levels
+  mu6[2:(level[6]+1)] ~ dmnorm(mean_B6,inv_M0_6*I_6)
+}
+

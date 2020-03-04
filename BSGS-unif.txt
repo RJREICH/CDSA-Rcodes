@@ -1,0 +1,100 @@
+
+# Bayesian Saprse Group Selection 
+
+model{
+
+# N:                             nb of observations
+# y[N]:                          outcome response of linear model 
+# nb_levels:                     total number of levels for all categorical predictors
+# X[nb_levels+1,nb_levels+1]:    design matrix (including the intercept)
+# Beta[nb_levels+1,nb_levels+1]: regression coefficients
+# tau:                           linear model precision
+# p_var:                         prior inclusion probability for covariates
+# p_within:                      prior inclusion probability for levels
+# m[nb_levels]:                  vector of nb of levels (without baseline) of
+                                 each parameter
+# pos[nb_levels]:                vector of position of each parameter 
+#ind_within_var[nb_levels]       vector of binary inclusion indicators for  
+                                 levels        
+#ind_var[nb_levels]              vector of binary inclusion indicators for
+                                 predictors
+
+
+#----------------------------------------------------------------------------
+# Likelihood of the linear model (Normal distribution)
+# First parameter refers to mean and the second to precision (inverse of    variance)
+#-----------------------------------------------------------------------------
+
+
+for(i in 1:N){
+
+y[i]~ dnorm(X[i,]%*%beta,tau)
+
+}
+
+#---------------------------------
+# Flat Normal prior for intercept
+#---------------------------------
+
+beta[1]~ dnorm(0,0.001)
+
+#-------------------------------------------------------
+# Binary indicator inclusion for categorical covariates
+#-------------------------------------------------------
+
+for(i in 1:nb_levels){ 
+
+ind[i]~ dbern(p_var)
+
+# using the vector pos allowed us to affect the same prior inclusion
+# probability for all levels within the same categorical covariates
+
+ind_var[i] <- ind[pos[i]] 
+}
+
+ 
+#---------------------------------------------------------------------
+# Mixture prior of Normal distribution and Dirac distribution on 0 on 
+# the regression coefficients
+#---------------------------------------------------------------------
+
+
+for(i in 1:nb_levels){
+
+TT[i] ~ dnorm(0,0.1) # 0.001/g*tau*R[i+1,i+1] 
+beta[i+1] <- (1-ind_var[i]*ind_within_var[i])*0+ind_var[i]*ind_within_var[i]*TT[i]
+}
+
+#---------------------------------------------------------------------
+# Binary indicators for levels inclusion: if the categorical covariate 
+# is off, all level indicators are null, if the categorical covariate
+# is on, a Bernoulli prior is set on level indicators
+#---------------------------------------------------------------------
+
+for (i in 1:nb_levels){
+
+T[i] ~ dbern(p_within)
+ind_within_var[i] = (1-ind_var[pos[i]])*0+ind_var[pos[i]]*T[i]
+
+}
+
+ 
+#----------------------------------------------------------------
+# Flat Gamma prior for the precison parameter of the linear model
+#----------------------------------------------------------------
+
+tau ~ dgamma(0.001,0.001)
+
+#-------------------------------------------------------
+# Prior Inlcusion probability for categorical covariates 
+#-------------------------------------------------------
+  
+p_var~ dunif(0,1)
+
+#---------------------------------------
+# Prior Inlcusion probability for levels
+#---------------------------------------
+
+p_within ~ dunif(0,1)
+
+}

@@ -1,0 +1,90 @@
+
+model{
+
+#N: nb of observations
+#y[N]: outcome response of linear model
+#nb_levels: total number of levels for all predictors
+#X[nb_levels,nb_levels]: design matrix (including the intercept)
+#beta[nb_levels+1,nb_levels+1]: vector of regression effects
+#tau: precision (1/variance) of the linear model
+#lambda: shrinkage Lasso parameter
+#p: prior probability inclusion
+#m[nb_levels]: levels number vector of each categorical covariate 
+#pos[nb_levels]: position vector of each categorical covariate
+#prob_inclusion[nb_levels]: vector of binary inclusion indicators for predictors
+#tau_coef[nb_levels]: vector of precision parameter in regression coefficients priors
+
+
+#----------------------------------------------------------------------------
+# Likelihood of the linear model (Normal distribution)
+# First parameter refers to mean and the second to precision (inverse of variance)
+#----------------------------------------------------------------------------
+
+
+for(i in 1:N){
+y[i]~ dnorm(X[i,]%*%beta,tau)
+}
+
+
+#---------------------------------
+# Flat Normal prior for intercept
+#---------------------------------
+beta[1]~ dnorm(0,0.001)
+
+
+#-------------------------------------------------------------------
+# Mixture prior of Normal distribution and a point mass at 0 on the 
+# regression coefficient
+#-------------------------------------------------------------------
+
+for (i in 1:nb_levels){
+
+b[i] ~ dnorm(0,tau*(1/pow(tau_coef[i],2)))
+beta[i+1] <- (1-prob_inclusion[i])*0+prob_inclusion[i]*b[i]
+
+}
+
+ 
+#-------------------------------------------------------------------
+# Prior Gamma on the precision parameter of regression coefficients
+#-------------------------------------------------------------------
+
+for (i in 1:nb_levels){
+
+ t[i] ~ dgamma((m[pos[i]]+1)/2,pow(lambda,2)/2)
+ tau_coef[i] <- t[pos[i]]
+
+}
+
+#----------------------------------------------------
+# Flat Gamma prior for the shrinkage parameter lambda
+#----------------------------------------------------
+
+lambda ~ dgamma(0.001,0.001) 
+
+#----------------------------------------------------------------
+# Flat Gamma prior for the precison parameter of the linear model
+#----------------------------------------------------------------
+
+tau ~ dgamma(0.001,0.001)
+
+
+#-------------------------------------------------------
+# Binary indicator inclusion for categorical covariates
+#-------------------------------------------------------
+
+for (i in 1:nb_levels){
+prob[i] ~ dbern(p)
+
+# using the vector pos allowed us to affect the same prior inclusion
+# probability for all levels within the same categorical covariates
+
+prob_inclusion[i] <- prob[pos[i]]
+}
+
+#----------------------------
+# Prior Inlcusion probability
+#----------------------------
+p~ dunif(0,1)
+
+}
